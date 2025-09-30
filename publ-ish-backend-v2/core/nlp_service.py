@@ -1,17 +1,10 @@
 # filename: core/nlp_service.py
 
 import yake
-from sentence_transformers import SentenceTransformer
 import re
 
 # --- MODEL LOADING ---
 print("Loading NLP models...")
-try:
-    EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
-    print("Semantic model (sentence-transformer) loaded successfully.")
-except Exception as e:
-    EMBEDDING_MODEL = None
-    print(f"CRITICAL ERROR: Could not load sentence-transformer model. {e}")
 
 # This configuration is set to find meaningful 2 or 3-word phrases.
 CONCEPT_EXTRACTOR = yake.KeywordExtractor(lan="en", n=3, dedupLim=0.9, top=7, features=None)
@@ -43,8 +36,5 @@ def extract_keywords_from_text(text: str) -> list:
 
 def get_semantic_embeddings(texts: list) -> list:
     """Generates semantic vector embeddings for a list of texts."""
-    if not EMBEDDING_MODEL:
-        print("Error: Embedding model is not available.")
-        return [[] for _ in texts]
-    
-    return EMBEDDING_MODEL.encode(texts, convert_to_tensor=False)
+    print("Warning: Embedding model is disabled.")
+    return [[] for _ in texts]
