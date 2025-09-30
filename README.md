@@ -1,4 +1,9 @@
+<<<<<<< HEAD
+````markdown
 # 📖 Journal Compass  
+=======
+# Journal Compass  
+>>>>>>> fix-openalex
 
 Journal Compass is a modern, two-page web application designed to help researchers find the **perfect journal** for their work.  
 Built for the **Hackops 2.5 hackathon**, it combines a sleek UI with an integrated **JournalMatch AI** engine that analyzes a research paper’s title and abstract to recommend the most suitable journals.  
@@ -16,7 +21,11 @@ Built for the **Hackops 2.5 hackathon**, it combines a sleek UI with an integrat
 
 ---
 
+<<<<<<< HEAD
 ## Tech Stack  
+=======
+##  Tech Stack  
+>>>>>>> fix-openalex
 
 - **Framework:** React (with TypeScript)  
 - **Build Tool:** Vite  
@@ -37,11 +46,16 @@ Follow these steps to set up the project locally.
 - [Node.js](https://nodejs.org/) **v18.x+**  
 - npm **v9+**  
 
+<<<<<<< HEAD
 ### ⚙️ Installation  
 
 ---
 
 ## Project Structure
+=======
+### ⚙️ Project Structure  
+
+>>>>>>> fix-openalex
 ```bash
 # Clone the repository
 git clone https://your-repository-url.git
@@ -54,6 +68,10 @@ npm install
 npm run dev
 
 
+<<<<<<< HEAD
+=======
+---
+>>>>>>> fix-openalex
 /
 ├── public/                 # Static assets
 └── src/

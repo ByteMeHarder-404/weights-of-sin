@@ -74,7 +74,10 @@ def recommend_endpoint():
             "url": candidate.url,
             "publisher": candidate.publisher,
             "semantic_score": round(result['score'], 2),
-            "peer_review_questions": questions
+            "peer_review_questions": questions,
+            "issn": candidate.issn,
+            "impact_factor": candidate.impact_factor,
+            "acceptance_rate": candidate.acceptance_rate
         })
 
     # STAGE 5: Assemble Final Response

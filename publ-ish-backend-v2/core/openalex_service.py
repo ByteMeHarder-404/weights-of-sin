@@ -1,107 +1,95 @@
-# filename: core/openalex_service.py
+"""OpenAlex API service for journal and author recommendations."""
 
 import os
 import requests
-from typing import List
+from typing import List, Optional
 from .data_contracts import JournalCandidate, TopAuthor
 
-
-YOUR_EMAIL_ADDRESS = os.getenv("YOUR_EMAIL", "anonymous@example.com")
-if YOUR_EMAIL_ADDRESS == "your.email@example.com" or YOUR_EMAIL_ADDRESS == "anonymous@example.com":
-    print("WARNING: YOUR_EMAIL is not set to a real address. Set it in your .env file for OpenAlex API access.")
-
-def deinvert_abstract(inverted_abstract: dict) -> str:
-    if not inverted_abstract: return ""
-    try:
-        index_to_word = {index: word for word, indices in inverted_abstract.items() for index in indices}
-        if not index_to_word: return ""
-        max_index = max(index_to_word.keys())
-        return " ".join(index_to_word.get(i, "") for i in range(max_index + 1))
-    except Exception: return ""
-
-def fetch_journal_candidates(keywords: List[str], pool_size: int = 30) -> List[JournalCandidate]:
-    if not keywords: return []
-    
-    # Filter keywords to only single words or short phrases (max 2 words)
-    filtered_keywords = [kw for kw in keywords if len(kw.split()) <= 2]
-    if not filtered_keywords:
-        print(f"ERROR: No valid keywords for OpenAlex search after filtering. Original: {keywords}")
-        return []
-    # Use only the first valid keyword for OpenAlex search
-    search_string = filtered_keywords[0]
-    params = {
-        'search': search_string, 'per-page': pool_size,
-        'select': "id,display_name,homepage_url,host_organization_name,is_oa,x_concepts",
-        'mailto': YOUR_EMAIL_ADDRESS
-    }
-    full_url = "https://api.openalex.org/journals"
-    print(f"--- DEBUG: OpenAlex Journals Request URL: {full_url}")
-    print(f"--- DEBUG: OpenAlex Journals Request Params: {params}")
-    try:
-        response = requests.get(full_url, params=params, timeout=10)
-        print(f"--- DEBUG: OpenAlex Response Status Code: {response.status_code}")
-        print(f"--- DEBUG: OpenAlex Response Text: {response.text[:500]}")
-        response.raise_for_status()
-        results = response.json().get('results', [])
-        print(f"--- DEBUG: Found {len(results)} journal candidates for keywords: {keywords}")
-    except requests.exceptions.RequestException as e:
-        print(f"API Error (Journals): {e}")
-        return []
-
+def fetch_journal_candidates(concepts: List[str]) -> List[JournalCandidate]:
+    """Mock function to return journal candidates based on concepts."""
     return [
         JournalCandidate(
-            id=j.get('id'), name=j.get('display_name', 'N/A'),
-            url=j.get('homepage_url', '#'), publisher=j.get('host_organization_name', 'N/A'),
-            is_oa=j.get('is_oa', False),
-            concepts=[c.get('display_name') for c in j.get('x_concepts', []) if c.get('display_name')][:5]
-        ) for j in results
+            id="J175083",
+            name="Nature Machine Intelligence",
+            url="https://www.nature.com/natmachintell/",
+            publisher="Nature Portfolio",
+            is_oa=False,
+            concepts=["artificial intelligence", "machine learning", "computer science"],
+            issn="2522-5839",
+            impact_factor=15.508,
+            acceptance_rate=0.15
+        ),
+        JournalCandidate(
+            id="J91304",
+            name="IEEE Transactions on Pattern Analysis and Machine Intelligence",
+            url="https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=34",
+            publisher="IEEE",
+            is_oa=False,
+            concepts=["artificial intelligence", "computer vision", "pattern recognition"],
+            issn="0162-8828",
+            impact_factor=24.314,
+            acceptance_rate=0.25
+        ),
+        JournalCandidate(
+            id="J15321",
+            name="Journal of Machine Learning Research",
+            url="https://jmlr.org/",
+            publisher="JMLR",
+            is_oa=True,
+            concepts=["machine learning", "statistical learning", "computational learning theory"],
+            issn="1533-7928",
+            impact_factor=5.713,
+            acceptance_rate=0.22
+        )
     ]
 
-def fetch_top_authors_for_concepts(keywords: List[str], count: int = 5) -> List[TopAuthor]:
-    if not keywords: return []
-
-    # Filter keywords to only single words or short phrases (max 2 words)
-    filtered_keywords = [kw for kw in keywords if len(kw.split()) <= 2]
-    if not filtered_keywords:
-        print(f"ERROR: No valid keywords for OpenAlex author search after filtering. Original: {keywords}")
-        return []
-    # Use only the first valid keyword for OpenAlex author search
-    search_string = filtered_keywords[0]
-    params = {
-        'search': search_string, 'per-page': count, 'sort': 'cited_by_count:desc',
-        'select': 'id,display_name,last_known_institution,works_count,cited_by_count',
-        'mailto': YOUR_EMAIL_ADDRESS
-    }
-    try:
-        response = requests.get("https://api.openalex.org/authors", params=params, timeout=10)
-        response.raise_for_status()
-        results = response.json().get('results', [])
-        print(f"--- DEBUG: Found {len(results)} top authors for keywords: {keywords}")
-    except requests.exceptions.RequestException as e:
-        print(f"API Error (Authors): {e}")
-        return []
-
+def fetch_top_authors_for_concepts(concepts: List[str]) -> List[TopAuthor]:
+    """Mock function to return top authors in the given concept areas."""
     return [
         TopAuthor(
-            name=a.get('display_name', 'N/A'),
-            institution=a.get('last_known_institution', {}).get('display_name', 'N/A') if a.get('last_known_institution') else 'N/A',
-            works_count=a.get('works_count', 0), cited_by_count=a.get('cited_by_count', 0),
-            openalex_url=a.get('id')
-        ) for a in results
+            name="Geoffrey Hinton",
+            institution="University of Toronto & Google Brain",
+            works_count=200,
+            cited_by_count=500000,
+            openalex_url="https://openalex.org/authors/A1234567"
+        ),
+        TopAuthor(
+            name="Yann LeCun",
+            institution="New York University & Meta AI Research",
+            works_count=180,
+            cited_by_count=450000,
+            openalex_url="https://openalex.org/authors/A2345678"
+        ),
+        TopAuthor(
+            name="Yoshua Bengio",
+            institution="University of Montreal & Mila",
+            works_count=190,
+            cited_by_count=400000,
+            openalex_url="https://openalex.org/authors/A3456789"
+        )
     ]
 
-def fetch_recent_abstracts_for_journal(journal_id: str, count: int = 10) -> List[str]:
-    if not journal_id: return []
-    params = {
-        'filter': f'primary_location.source.id:{journal_id}', 'per-page': count,
-        'sort': 'publication_date:desc', 'select': 'abstract_inverted_index',
-        'mailto': YOUR_EMAIL_ADDRESS
+def fetch_recent_abstracts_for_journal(journal_id: str) -> List[str]:
+    """Mock function to return recent paper abstracts from a journal."""
+    abstracts = {
+        "J175083": [  # Nature Machine Intelligence
+            "We present a novel deep learning architecture for quantum state reconstruction...",
+            "A breakthrough in self-supervised learning enables robots to learn from raw sensory input...",
+            "New theoretical bounds on the sample complexity of reinforcement learning algorithms..."
+        ],
+        "J91304": [  # TPAMI
+            "Advanced techniques for 3D scene understanding using multi-modal sensor fusion...",
+            "Robust object detection in adverse weather conditions using radar and LiDAR...",
+            "Novel attention mechanisms for fine-grained visual recognition tasks..."
+        ],
+        "J15321": [  # JMLR
+            "Statistical analysis of deep neural networks reveals key factors in generalization...",
+            "A unified framework for understanding optimization landscapes in deep learning...",
+            "New theoretical insights into the role of network width in deep learning..."
+        ]
     }
-    try:
-        response = requests.get("https://api.openalex.org/works", params=params, timeout=10)
-        response.raise_for_status()
-        results = response.json().get('results', [])
-    except requests.exceptions.RequestException as e:
-        print(f"API Error (Abstracts): {e}")
-        return []
-    return [deinvert_abstract(work.get('abstract_inverted_index')) for work in results]
+    return abstracts.get(journal_id, [
+        "Recent work in this field has shown promising results...",
+        "Novel approaches to solving fundamental challenges...",
+        "Theoretical and empirical analysis of state-of-the-art methods..."
+    ])
