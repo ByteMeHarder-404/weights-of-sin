@@ -7,11 +7,11 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Slider } from './ui/slider';
 import { BookOpen, HelpCircle, User, Bookmark } from 'lucide-react';
-import { type ApiRequest, type ApiResponse, type JournalRecommendation } from '../types/api';
+import { type ApiResponse, type JournalRecommendation } from '../types/api';
 
 const API_URL = 'http://127.0.0.1:5001';
 
-async function getJournalRecommendations(data: ApiRequest): Promise<ApiResponse> {
+async function getJournalRecommendations(data: { title: string; abstract: string }): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/recommend`, {
     method: 'POST',
     headers: {
@@ -26,7 +26,6 @@ async function getJournalRecommendations(data: ApiRequest): Promise<ApiResponse>
 
   return response.json();
 }
-import { getJournalRecommendations, type JournalRecommendation } from '../lib/api';
 
 // Background colors for journal cards
 const BACKGROUND_COLORS = [
@@ -35,35 +34,13 @@ const BACKGROUND_COLORS = [
   'bg-[#E5E2D9]',  // Beige
   'bg-[#F2E2ED]',  // Pink
 ];
-import { getJournalRecommendations, type JournalRecommendation } from '../lib/api';
+
+function getBgColor(index: number): string {
+  return BACKGROUND_COLORS[index % BACKGROUND_COLORS.length];
+}
 
 export function JournalMatchDashboard() {
   const [impactFactor, setImpactFactor] = useState([2]);
-  const [title, setTitle] = useState('');
-  const [abstract, setAbstract] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<JournalRecommendation[]>([]);
-
-  const handleSubmit = async () => {
-    if (!title || !abstract) {
-      setError('Please provide both title and abstract');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await getJournalRecommendations({ title, abstract });
-      setRecommendations(response.journalRecommendations);
-    } catch (err) {
-      setError('Failed to fetch recommendations. Please try again.');
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
   const [loading, setLoading] = useState(false);
@@ -225,87 +202,30 @@ export function JournalMatchDashboard() {
                 {recommendations.length > 0 ? (
                   recommendations.map((journal, index) => (
                     <Card key={journal.issn} className={`p-6 ${getBgColor(index)} border-gray-200 relative`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#333333] mb-1">{journal.name}</h4>
-                        <p className="text-sm text-[#6c757d] mb-2">{journal.publisher} • ISSN: {journal.issn}</p>
-                        <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
-                          <span>Impact Factor: {journal.impact_factor.toFixed(3)}</span>
-                          <span>Acceptance: {journal.acceptance_rate}%</span>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-[#333333] mb-1">{journal.name}</h4>
+                            <p className="text-sm text-[#6c757d] mb-2">{journal.publisher} • ISSN: {journal.issn}</p>
+                            <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
+                              <span>Impact Factor: {journal.impact_factor.toFixed(3)}</span>
+                              <span>Acceptance: {(journal.acceptance_rate * 100).toFixed(1)}%</span>
+                            </div>
+                            <a href={journal.url} target="_blank" rel="noopener noreferrer" className="text-[#5E705A] text-sm underline">Visit Journal</a>
+                          </div>
                         </div>
-                        <a href={journal.url} target="_blank" rel="noopener noreferrer" className="text-[#5E705A] text-sm underline">Visit Journal</a>
+                        <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
                       </div>
-                    </div>
-                    <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
-                  </div>
-                </Card>
-
-                {/* Journal Card 2 */}
-                <Card className="p-6 bg-[#D4D9E2] border-gray-200 relative">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        2
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#333333] mb-1">Journal of Machine Learning Research</h4>
-                        <p className="text-sm text-[#6c757d] mb-2">JMLR • ISSN: 1533-7928</p>
-                        <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
-                          <span>Impact Factor: 6.064</span>
-                          <span>Acceptance: 22%</span>
-                        </div>
-                        <a href="#" className="text-[#5E705A] text-sm underline">Visit Journal</a>
-                      </div>
-                    </div>
-                    <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
-                  </div>
-                </Card>
-
-                {/* Journal Card 3 */}
-                <Card className="p-6 bg-[#E5E2D9] border-gray-200 relative">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        3
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#333333] mb-1">AI Magazine</h4>
-                        <p className="text-sm text-[#6c757d] mb-2">AAAI • ISSN: 0738-4602</p>
-                        <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
-                          <span>Impact Factor: 9.000</span>
-                          <span>Acceptance: 35%</span>
-                        </div>
-                        <a href="#" className="text-[#5E705A] text-sm underline">Visit Journal</a>
-                      </div>
-                    </div>
-                    <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
-                  </div>
-                </Card>
-
-                {/* Journal Card 4 */}
-                <Card className="p-6 bg-[#F2E2ED] border-gray-200 relative">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        4
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#333333] mb-1">Ethics and Information Technology</h4>
-                        <p className="text-sm text-[#6c757d] mb-2">Springer • ISSN: 1388-1957</p>
-                        <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
-                          <span>Impact Factor: 3.955</span>
-                          <span>Acceptance: 42%</span>
-                        </div>
-                        <a href="#" className="text-[#5E705A] text-sm underline">Visit Journal</a>
-                      </div>
-                    </div>
-                    <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
-                  </div>
-                </Card>
+                    </Card>
+                  ))
+                ) : loading ? (
+                  <div className="text-center text-[#6c757d] py-8">Loading recommendations...</div>
+                ) : (
+                  <div className="text-center text-[#6c757d] py-8">Submit your paper details to get journal recommendations.</div>
+                )}
               </div>
             </div>
 
