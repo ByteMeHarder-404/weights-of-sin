@@ -7,6 +7,25 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Slider } from './ui/slider';
 import { BookOpen, HelpCircle, User, Bookmark } from 'lucide-react';
+import { type ApiRequest, type ApiResponse, type JournalRecommendation } from '../types/api';
+
+const API_URL = 'http://127.0.0.1:5001';
+
+async function getJournalRecommendations(data: ApiRequest): Promise<ApiResponse> {
+  const response = await fetch(`${API_URL}/recommend`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
 import { getJournalRecommendations, type JournalRecommendation } from '../lib/api';
 
 // Background colors for journal cards
