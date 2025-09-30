@@ -17,4 +17,5 @@ https://huggingface.co/dima806/music_genres_classification
 3. Notes for Each song and how it related to your mood<br>
 4. A photo that can be uploaded to social media<br>
 5. Random playlist that has a gradient of moods from sad to happy<br>
-6. website.<br>
+6. Intuitive website.<br>
+<b>Theme: Stressed to relieved<b><br>
