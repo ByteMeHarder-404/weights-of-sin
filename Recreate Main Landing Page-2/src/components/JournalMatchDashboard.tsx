@@ -7,9 +7,69 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Slider } from './ui/slider';
 import { BookOpen, HelpCircle, User, Bookmark } from 'lucide-react';
+import { getJournalRecommendations, type JournalRecommendation } from '../lib/api';
+
+// Background colors for journal cards
+const BACKGROUND_COLORS = [
+  'bg-[#F3F0D3]',  // Yellow
+  'bg-[#D4D9E2]',  // Blue-gray
+  'bg-[#E5E2D9]',  // Beige
+  'bg-[#F2E2ED]',  // Pink
+];
+import { getJournalRecommendations, type JournalRecommendation } from '../lib/api';
 
 export function JournalMatchDashboard() {
   const [impactFactor, setImpactFactor] = useState([2]);
+  const [title, setTitle] = useState('');
+  const [abstract, setAbstract] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<JournalRecommendation[]>([]);
+
+  const handleSubmit = async () => {
+    if (!title || !abstract) {
+      setError('Please provide both title and abstract');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await getJournalRecommendations({ title, abstract });
+      setRecommendations(response.journalRecommendations);
+    } catch (err) {
+      setError('Failed to fetch recommendations. Please try again.');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const [title, setTitle] = useState('');
+  const [abstract, setAbstract] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<JournalRecommendation[]>([]);
+
+  const handleSubmit = async () => {
+    if (!title || !abstract) {
+      setError('Please provide both title and abstract');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await getJournalRecommendations({ title, abstract });
+      setRecommendations(response.journalRecommendations);
+    } catch (err) {
+      setError('Failed to fetch recommendations. Please try again.');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-[#FCFCFA] p-6">
@@ -44,6 +104,8 @@ export function JournalMatchDashboard() {
                 <Input 
                   placeholder="Enter your paper title here"
                   className="bg-white border-gray-300"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               <div>
@@ -51,12 +113,21 @@ export function JournalMatchDashboard() {
                 <Textarea 
                   placeholder="Paste your paper abstract here"
                   className="bg-white border-gray-300 min-h-32"
+                  value={abstract}
+                  onChange={(e) => setAbstract(e.target.value)}
                 />
               </div>
               <div className="flex justify-center">
-                <Button className="bg-[#8A9A85] hover:bg-[#7a8a75] text-white px-8 py-3">
-                  Evaluate Paper
+                <Button 
+                  className="bg-[#8A9A85] hover:bg-[#7a8a75] text-white px-8 py-3" 
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? 'Evaluating...' : 'Evaluate Paper'}
                 </Button>
+                {error && (
+                  <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+                )}
               </div>
             </div>
           </div>
@@ -132,21 +203,22 @@ export function JournalMatchDashboard() {
               <h3 className="text-xl font-bold text-[#333333]">Ranked Journal Recommendations</h3>
               
               <div className="space-y-4">
-                {/* Journal Card 1 */}
-                <Card className="p-6 bg-[#F3F0D3] border-gray-200 relative">
+                {recommendations.length > 0 ? (
+                  recommendations.map((journal, index) => (
+                    <Card key={journal.issn} className={`p-6 ${getBgColor(index)} border-gray-200 relative`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
                       <div className="w-8 h-8 bg-[#333333] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        1
+                        {index + 1}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-[#333333] mb-1">Nature Machine Intelligence</h4>
-                        <p className="text-sm text-[#6c757d] mb-2">Springer Nature • ISSN: 2522-5839</p>
+                        <h4 className="font-bold text-[#333333] mb-1">{journal.name}</h4>
+                        <p className="text-sm text-[#6c757d] mb-2">{journal.publisher} • ISSN: {journal.issn}</p>
                         <div className="flex gap-4 text-sm text-[#6c757d] mb-2">
-                          <span>Impact Factor: 25.898</span>
-                          <span>Acceptance: 8%</span>
+                          <span>Impact Factor: {journal.impact_factor.toFixed(3)}</span>
+                          <span>Acceptance: {journal.acceptance_rate}%</span>
                         </div>
-                        <a href="#" className="text-[#5E705A] text-sm underline">Visit Journal</a>
+                        <a href={journal.url} target="_blank" rel="noopener noreferrer" className="text-[#5E705A] text-sm underline">Visit Journal</a>
                       </div>
                     </div>
                     <Bookmark className="w-5 h-5 text-gray-400 hover:text-[#6c757d] cursor-pointer" />
