@@ -22,3 +22,6 @@ class JournalCandidate:
     publisher: str
     is_oa: bool
     concepts: List[str] = field(default_factory=list)
+    issn: str = "0000-0000"
+    impact_factor: float = 0.0
+    acceptance_rate: float = 0.0
