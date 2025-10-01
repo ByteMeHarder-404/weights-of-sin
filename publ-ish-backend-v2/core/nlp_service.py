@@ -34,7 +34,20 @@ def extract_keywords_from_text(text: str) -> list:
     # Return a simple list of the best, cleaned keywords
     return sanitized_keywords[:5] # Return the top 5 valid keywords
 
+from sentence_transformers import SentenceTransformer
+
+# Initialize the embedding model
+EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+print("Sentence transformer model loaded.")
+
 def get_semantic_embeddings(texts: list) -> list:
     """Generates semantic vector embeddings for a list of texts."""
-    print("Warning: Embedding model is disabled.")
-    return [[] for _ in texts]
+    try:
+        # Generate embeddings for all texts at once
+        embeddings = EMBEDDING_MODEL.encode(texts, convert_to_tensor=False)
+        print(f"Generated embeddings of shape: {embeddings.shape}")
+        return embeddings.tolist()
+    except Exception as e:
+        print(f"Error generating embeddings: {str(e)}")
+        # Return zero vectors as fallback
+        return [[0.0] * 384 for _ in texts]  # 384 is the dimension of MiniLM embeddings

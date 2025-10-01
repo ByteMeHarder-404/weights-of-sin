@@ -7,24 +7,39 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Slider } from './ui/slider';
 import { BookOpen, HelpCircle, User, Bookmark } from 'lucide-react';
-import { type ApiResponse, type JournalRecommendation } from '../types/api';
+import { type RecommendationResponse, type JournalRecommendation } from '../types/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001';
 
-async function getJournalRecommendations(data: { title: string; abstract: string }): Promise<ApiResponse> {
+// For debugging
+const DEBUG = true;
+
+async function getJournalRecommendations(data: { title: string; abstract: string }): Promise<RecommendationResponse> {
+  if (DEBUG) console.log('Making API request with data:', data);
+
   const response = await fetch(`${API_URL}/recommend`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
+    credentials: 'include',
+    mode: 'cors',
     body: JSON.stringify(data),
   });
 
+  if (DEBUG) console.log('API response status:', response.status);
+
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorText = await response.text();
+    if (DEBUG) console.error('API error response:', errorText);
+    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
   }
 
-  return response.json();
+  const jsonResponse = await response.json();
+  if (DEBUG) console.log('API response data:', jsonResponse);
+
+  return jsonResponse;
 }
 
 // Background colors for journal cards
@@ -55,12 +70,27 @@ export function JournalMatchDashboard() {
 
     setLoading(true);
     setError(null);
+    setRecommendations([]);
 
     try {
+      if (DEBUG) console.log('Submitting paper with title:', title.substring(0, 50) + '...');
+      
       const response = await getJournalRecommendations({ title, abstract });
+      
+      if (DEBUG) {
+        console.log('Received recommendations:', response.journalRecommendations?.length || 0);
+        console.log('First recommendation:', response.journalRecommendations?.[0]);
+      }
+
+      if (!response.journalRecommendations || response.journalRecommendations.length === 0) {
+        setError('No journal recommendations found for your paper. Try adjusting your abstract.');
+        return;
+      }
+
       setRecommendations(response.journalRecommendations);
     } catch (err) {
-      setError('Failed to fetch recommendations. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch recommendations. Please try again.';
+      setError(errorMessage);
       console.error('Error:', err);
     } finally {
       setLoading(false);

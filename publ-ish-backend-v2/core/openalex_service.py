@@ -15,22 +15,35 @@ HEADERS = {"User-Agent": f"JournalCompass/{USER_EMAIL}"}
 def _make_request(url: str, params: Dict = None) -> Dict:
     """Make a request to OpenAlex API with rate limiting and error handling."""
     try:
+        print(f"\nMaking OpenAlex API request to: {url}")
+        print(f"With params: {params}")
+        print(f"Using headers: {HEADERS}")
+        
         response = requests.get(url, params=params, headers=HEADERS)
+        print(f"Response status code: {response.status_code}")
+        
         response.raise_for_status()
         time.sleep(0.1)  # Basic rate limiting
-        return response.json()
+        
+        data = response.json()
+        print(f"Response data: {data.get('meta', {})}") # Print metadata without full response
+        return data
     except requests.RequestException as e:
         print(f"OpenAlex API error: {str(e)}")
+        print(f"Response content: {response.text if 'response' in locals() else 'No response'}")
         return {}
 
 def fetch_journal_candidates(concepts: List[str], limit: int = 10) -> List[JournalCandidate]:
     """Fetch real journal candidates from OpenAlex based on concepts."""
+    print(f"\nFetching journal candidates for concepts: {concepts}")
+    
     # Create cache key from concepts and limit
     cache_key = f"journals_{'-'.join(sorted(concepts))}_{limit}"
     
     # Try to get from cache first
     cached_results = journal_cache.get(cache_key)
     if cached_results is not None:
+        print(f"Found {len(cached_results)} cached journal results")
         return cached_results
         
     journals = []
@@ -42,12 +55,14 @@ def fetch_journal_candidates(concepts: List[str], limit: int = 10) -> List[Journ
     url = f"{OPENALEX_API_BASE}/venues"
     params = {
         "search": query,
-        "filter": "type:journal",
+        "filter": "type:journal,works_count:>1000",  # Only established journals
+        "sort": "works_count:desc",  # Sort by number of papers
         "per_page": limit
     }
     
     data = _make_request(url, params)
     results = data.get("results", [])
+    print(f"Found {len(results)} journals from OpenAlex")
     
     for result in results:
         # Extract concepts from the journal's works
