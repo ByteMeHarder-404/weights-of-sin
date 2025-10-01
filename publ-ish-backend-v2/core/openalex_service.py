@@ -1,95 +1,163 @@
 """OpenAlex API service for journal and author recommendations."""
 
 import os
+import time
 import requests
-from typing import List, Optional
+from typing import List, Optional, Dict
 from .data_contracts import JournalCandidate, TopAuthor
+from .cache_service import journal_cache, author_cache, abstract_cache
 
-def fetch_journal_candidates(concepts: List[str]) -> List[JournalCandidate]:
-    """Mock function to return journal candidates based on concepts."""
-    return [
-        JournalCandidate(
-            id="J175083",
-            name="Nature Machine Intelligence",
-            url="https://www.nature.com/natmachintell/",
-            publisher="Nature Portfolio",
-            is_oa=False,
-            concepts=["artificial intelligence", "machine learning", "computer science"],
-            issn="2522-5839",
-            impact_factor=15.508,
-            acceptance_rate=0.15
-        ),
-        JournalCandidate(
-            id="J91304",
-            name="IEEE Transactions on Pattern Analysis and Machine Intelligence",
-            url="https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=34",
-            publisher="IEEE",
-            is_oa=False,
-            concepts=["artificial intelligence", "computer vision", "pattern recognition"],
-            issn="0162-8828",
-            impact_factor=24.314,
-            acceptance_rate=0.25
-        ),
-        JournalCandidate(
-            id="J15321",
-            name="Journal of Machine Learning Research",
-            url="https://jmlr.org/",
-            publisher="JMLR",
-            is_oa=True,
-            concepts=["machine learning", "statistical learning", "computational learning theory"],
-            issn="1533-7928",
-            impact_factor=5.713,
-            acceptance_rate=0.22
-        )
-    ]
+# Constants
+OPENALEX_API_BASE = "https://api.openalex.org"
+USER_EMAIL = os.getenv("YOUR_EMAIL", "user@example.com")
+HEADERS = {"User-Agent": f"JournalCompass/{USER_EMAIL}"}
 
-def fetch_top_authors_for_concepts(concepts: List[str]) -> List[TopAuthor]:
-    """Mock function to return top authors in the given concept areas."""
-    return [
-        TopAuthor(
-            name="Geoffrey Hinton",
-            institution="University of Toronto & Google Brain",
-            works_count=200,
-            cited_by_count=500000,
-            openalex_url="https://openalex.org/authors/A1234567"
-        ),
-        TopAuthor(
-            name="Yann LeCun",
-            institution="New York University & Meta AI Research",
-            works_count=180,
-            cited_by_count=450000,
-            openalex_url="https://openalex.org/authors/A2345678"
-        ),
-        TopAuthor(
-            name="Yoshua Bengio",
-            institution="University of Montreal & Mila",
-            works_count=190,
-            cited_by_count=400000,
-            openalex_url="https://openalex.org/authors/A3456789"
-        )
-    ]
+def _make_request(url: str, params: Dict = None) -> Dict:
+    """Make a request to OpenAlex API with rate limiting and error handling."""
+    try:
+        response = requests.get(url, params=params, headers=HEADERS)
+        response.raise_for_status()
+        time.sleep(0.1)  # Basic rate limiting
+        return response.json()
+    except requests.RequestException as e:
+        print(f"OpenAlex API error: {str(e)}")
+        return {}
 
-def fetch_recent_abstracts_for_journal(journal_id: str) -> List[str]:
-    """Mock function to return recent paper abstracts from a journal."""
-    abstracts = {
-        "J175083": [  # Nature Machine Intelligence
-            "We present a novel deep learning architecture for quantum state reconstruction...",
-            "A breakthrough in self-supervised learning enables robots to learn from raw sensory input...",
-            "New theoretical bounds on the sample complexity of reinforcement learning algorithms..."
-        ],
-        "J91304": [  # TPAMI
-            "Advanced techniques for 3D scene understanding using multi-modal sensor fusion...",
-            "Robust object detection in adverse weather conditions using radar and LiDAR...",
-            "Novel attention mechanisms for fine-grained visual recognition tasks..."
-        ],
-        "J15321": [  # JMLR
-            "Statistical analysis of deep neural networks reveals key factors in generalization...",
-            "A unified framework for understanding optimization landscapes in deep learning...",
-            "New theoretical insights into the role of network width in deep learning..."
-        ]
+def fetch_journal_candidates(concepts: List[str], limit: int = 10) -> List[JournalCandidate]:
+    """Fetch real journal candidates from OpenAlex based on concepts."""
+    # Create cache key from concepts and limit
+    cache_key = f"journals_{'-'.join(sorted(concepts))}_{limit}"
+    
+    # Try to get from cache first
+    cached_results = journal_cache.get(cache_key)
+    if cached_results is not None:
+        return cached_results
+        
+    journals = []
+    
+    # Convert concepts to a query string
+    query = " OR ".join(concepts)
+    
+    # Search for venues (journals) that publish papers with these concepts
+    url = f"{OPENALEX_API_BASE}/venues"
+    params = {
+        "search": query,
+        "filter": "type:journal",
+        "per_page": limit
     }
-    return abstracts.get(journal_id, [
-        "Recent work in this field has shown promising results...",
-        "Novel approaches to solving fundamental challenges...",
-        "Theoretical and empirical analysis of state-of-the-art methods..."
-    ])
+    
+    data = _make_request(url, params)
+    results = data.get("results", [])
+    
+    for result in results:
+        # Extract concepts from the journal's works
+        journal_concepts = []
+        if result.get("x_concepts"):
+            journal_concepts = [c["display_name"] for c in result["x_concepts"][:5]]
+        
+        journal = JournalCandidate(
+            id=result.get("id", "").replace("https://openalex.org/V", ""),
+            name=result.get("display_name", "Unknown Journal"),
+            url=result.get("homepage_url") or "",
+            publisher=result.get("publisher", "Unknown Publisher"),
+            is_oa=result.get("is_oa", False),
+            concepts=journal_concepts,
+            issn=result.get("issn_l", ""),
+            impact_factor=float(result.get("works_count", 0)) / max(1, result.get("cited_by_count", 1)),  # Approximation
+            acceptance_rate=0.3  # Default as OpenAlex doesn't provide this
+        )
+        journals.append(journal)
+    
+    # Cache the results before returning
+    journal_cache.set(cache_key, journals)
+    return journals
+
+def fetch_top_authors_for_concepts(concepts: List[str], limit: int = 5) -> List[TopAuthor]:
+    """Fetch real top authors from OpenAlex based on concepts."""
+    # Create cache key from concepts and limit
+    cache_key = f"authors_{'-'.join(sorted(concepts))}_{limit}"
+    
+    # Try to get from cache first
+    cached_results = author_cache.get(cache_key)
+    if cached_results is not None:
+        return cached_results
+        
+    authors = []
+    
+    # Convert concepts to a query string
+    query = " OR ".join(concepts)
+    
+    # Search for authors who published papers with these concepts
+    url = f"{OPENALEX_API_BASE}/authors"
+    params = {
+        "search": query,
+        "sort": "cited_by_count:desc",  # Sort by citation count
+        "per_page": limit
+    }
+    
+    data = _make_request(url, params)
+    results = data.get("results", [])
+    
+    for result in results:
+        author = TopAuthor(
+            name=result.get("display_name", "Unknown Author"),
+            institution=result.get("last_known_institution", {}).get("display_name", "Unknown Institution"),
+            works_count=result.get("works_count", 0),
+            cited_by_count=result.get("cited_by_count", 0),
+            openalex_url=result.get("id", "")
+        )
+        authors.append(author)
+    
+    # Cache the results before returning
+    author_cache.set(cache_key, authors)
+    return authors
+
+def fetch_recent_abstracts_for_journal(journal_id: str, limit: int = 3) -> List[str]:
+    """Fetch real recent paper abstracts from a journal using OpenAlex API."""
+    # Create cache key
+    cache_key = f"abstracts_{journal_id}_{limit}"
+    
+    # Try to get from cache first
+    cached_results = abstract_cache.get(cache_key)
+    if cached_results is not None:
+        return cached_results
+        
+    abstracts = []
+    
+    # Search for recent works from this journal
+    url = f"{OPENALEX_API_BASE}/works"
+    params = {
+        "filter": f"venue.id:V{journal_id}",
+        "sort": "publication_date:desc",
+        "per_page": limit
+    }
+    
+    data = _make_request(url, params)
+    results = data.get("results", [])
+    
+    for result in results:
+        abstract = result.get("abstract_inverted_index")
+        if abstract:
+            # Convert inverted index back to text
+            # OpenAlex stores abstracts as inverted indices for efficiency
+            words = []
+            for word, positions in abstract.items():
+                for pos in positions:
+                    while len(words) <= pos:
+                        words.append("")
+                    words[pos] = word
+            abstracts.append(" ".join(words))
+        else:
+            abstracts.append("Abstract not available.")
+    
+    # Ensure we always return something even if the API call fails
+    if not abstracts:
+        abstracts = [
+            "Recent work in this field has shown promising results...",
+            "Novel approaches to solving fundamental challenges...",
+            "Theoretical and empirical analysis of state-of-the-art methods..."
+        ][:limit]
+    
+    # Cache the results before returning
+    abstract_cache.set(cache_key, abstracts)
+    return abstracts
