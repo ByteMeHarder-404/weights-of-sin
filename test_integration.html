@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .results { margin-top: 20px; padding: 20px; background: #f5f5f5; border-radius: 5px; }
+        .loading { color: #666; font-style: italic; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Journal Recommendation API Test</h1>
+        
+        <form id="testForm">
+            <div>
+                <label for="title">Paper Title:</label><br>
+                <input type="text" id="title" value="Machine Learning Applications in Medical Diagnosis" style="width: 100%; padding: 8px;">
+            </div>
+            
+            <div>
+                <label for="abstract">Abstract:</label><br>
+                <textarea id="abstract" placeholder="Enter your paper abstract here...">This research presents a comprehensive study on the application of deep learning techniques for automated medical diagnosis. We developed a convolutional neural network model that analyzes medical imaging data to identify potential abnormalities with high accuracy. Our approach demonstrates significant improvements over traditional diagnostic methods, achieving 95% accuracy on a dataset of 10,000 medical images. The implications of this work extend to improving healthcare accessibility and diagnostic speed in clinical settings.</textarea>
+            </div>
+            
+            <button type="submit">Get Journal Recommendations</button>
+        </form>
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>Results:</h3>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const abstract = document.getElementById('abstract').value;
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            if (!title || !abstract) {
+                alert('Please fill in both title and abstract');
+                return;
+            }
+            
+            resultsDiv.style.display = 'block';
+            resultsContent.innerHTML = '<div class="loading">🔄 Fetching recommendations from dynamic backend...</div>';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:5001/recommend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, abstract })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                let html = '<div class="success">✅ Success! Dynamic recommendations received:</div>';
+                
+                html += '<h4>📚 Recommended Journals:</h4>';
+                if (data.journalRecommendations && data.journalRecommendations.length > 0) {
+                    data.journalRecommendations.forEach(journal => {
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                                <strong>Rank ${journal.rank}: ${journal.name}</strong><br>
+                                <strong>Publisher:</strong> ${journal.publisher}<br>
+                                <strong>Semantic Score:</strong> ${journal.semantic_score}<br>
+                                <strong>URL:</strong> <a href="${journal.url}" target="_blank">${journal.url}</a><br>
+                                <strong>ISSN:</strong> ${journal.issn}<br>
+                                <strong>Sample Review Questions:</strong>
+                                <ul>
+                                    ${journal.peer_review_questions.map(q => `<li>${q}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += '<p>No journal recommendations found.</p>';
+                }
+                
+                html += '<h4>👨‍🔬 Top Authors:</h4>';
+                if (data.topAuthors && data.topAuthors.length > 0) {
+                    data.topAuthors.forEach(author => {
+                        html += `
+                            <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 3px;">
+                                <strong>${author.name}</strong> - ${author.institution}<br>
+                                <small>Works: ${author.works_count} | Citations: ${author.cited_by_count.toLocaleString()}</small><br>
+                                <small><a href="${author.openalex_url}" target="_blank">OpenAlex Profile</a></small>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += '<p>No author data found.</p>';
+                }
+                
+                resultsContent.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                resultsContent.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
