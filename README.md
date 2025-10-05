@@ -1,7 +1,8 @@
 # 📖 Journal Compass  
 
 Journal Compass is a modern, two-page web application designed to help researchers find the **perfect journal** for their work.  
-Built for the **Hackops 2.5 hackathon**, it combines a sleek UI with an integrated **JournalMatch AI** engine that analyzes a research paper’s title and abstract to recommend the most suitable journals.  
+Built for the **Hackops 2.5 hackathon**, it combines a sleek UI with an integrated **JournalMatch AI** engine that analyzes a research paper’s title and abstract to recommend the most suitable journals.
+Static FrontEnd Preview - https://recreate-landing-page.vercel.app
 
 ---
 
